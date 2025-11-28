@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Aktiv Kanallar</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f5f7;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 900px;
+      margin: 40px auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .channels-wrapper {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .channel-card {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 15px;
+      transition: 0.2s;
+    }
+
+    .channel-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .ch-name {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .ch-link {
+      font-size: 14px;
+      color: #007bff;
+      word-break: break-all;
+      margin-bottom: 10px;
+    }
+
+    .send-btn {
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .send-btn:hover {
+      background: #1e7e34;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Aktiv Kanallar</h1>
+  <div id="channels-wrapper" class="channels-wrapper"></div>
+</div>
+
+<script>
+  const adId = new URLSearchParams(window.location.search).get("adId");
+
+  if (!adId) {
+    alert("adId topilmadi!");
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    loadChannels();
+  });
+
+  async function loadChannels() {
+    const wrapper = document.getElementById("channels-wrapper");
+
+    try {
+      const res = await fetch("/api/v1/channels/active", {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        }
+      });
+
+      if (!res.ok) {
+        wrapper.innerHTML = "<p style='color:red;'>Kanallarni yuklab bo‘lmadi.</p>";
+        return;
+      }
+
+      const channels = await res.json();
+
+      if (channels.length === 0) {
+        wrapper.innerHTML = "<p>Hozircha aktiv kanallar yo‘q.</p>";
+        return;
+      }
+
+      channels.forEach(ch => {
+        const card = document.createElement("div");
+        card.className = "channel-card";
+
+        card.innerHTML = `
+                    <div class="ch-name">${ch.name}</div>
+                    <div class="ch-link">${ch.link || "Link mavjud emas"}</div>
+                    <button class="send-btn" onclick="sendToChannel('${ch.id}')">
+                        Telegramga yuborish
+                    </button>
+                `;
+
+        wrapper.appendChild(card);
+      });
+
+    } catch (err) {
+      console.error(err);
+      wrapper.innerHTML = "<p style='color:red;'>Xatolik yuz berdi.</p>";
+    }
+  }
+
+  async function sendToChannel(channelId) {
+    if (!adId) {
+      alert("adId topilmadi, yuborib bo‘lmaydi.");
+      return;
+    }
+
+    if (!confirm("Ushbu e’lonni tanlangan kanalga yuborilsinmi?")) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/v1/channels/send-ad/${encodeURIComponent(adId)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify([channelId])
+      });
+
+      if (res.ok) {
+        alert("E'lon kanallarga yuborildi.");
+        // redirect to ads list page
+        window.location.href = "/ads/my-ads.html";
+      } else {
+        // try to read error message if any
+        let text = "Yuborishda xatolik yuz berdi.";
+        try {
+          const errBody = await res.json();
+          if (errBody && errBody.message) text = errBody.message;
+        } catch (_) {}
+        alert(text);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Tarmoq xatosi: yuborib bo‘lmadi.");
+    }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Kanalni yangilash</title>
+    <style>
+        body{font-family:Arial;background:#f4f4f4;margin:0;padding:0;}
+        .container{width:90%;max-width:500px;margin:40px auto;background:white;padding:20px;border-radius:6px;}
+        input,button,select{width:100%;padding:8px;margin:5px 0;border-radius:4px;border:1px solid #ccc;}
+        button{background:#28a745;color:white;border:none;cursor:pointer;}
+        .nav-buttons { margin-bottom: 15px; }
+        .nav-buttons button { width: auto; display: inline-block; margin-right: 10px; }
+        .btn-back { background:#6c757d; color:white; }
+        .btn-home { background:#343a40; color:white; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Kanalni yangilash</h1>
+
+    <div class="nav-buttons">
+        <button class="btn-back" onclick="history.back()">Ortga</button>
+        <button class="btn-home" onclick="window.location.href='/'">Asosiy ekran</button>
+    </div>
+
+    <input type="text" id="name" placeholder="Kanal nomi">
+    <input type="number" id="telegramChannelId" placeholder="Telegram channel ID (raqam)">
+    <input type="text" id="link" placeholder="Telegram link">
+    <input type="text" id="ownerId" placeholder="Owner ID">
+    <select id="active">
+        <option value="true">Faol</option>
+        <option value="false">No-faol</option>
+    </select>
+    <button onclick="updateChannel()">Saqlash</button>
+</div>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+
+    async function loadChannel(){
+        try {
+            const res = await fetch(`/api/v1/channels/${id}`, {
+                headers:{ "Authorization":`Bearer ${localStorage.getItem("token")}` }
+            });
+            if(!res.ok) throw new Error(await res.text());
+            const ch = await res.json();
+            document.getElementById("name").value = ch.name;
+            document.getElementById("link").value = ch.link || '';
+            document.getElementById("telegramChannelId").value = ch.telegramChannelId || '';
+            document.getElementById("ownerId").value = ch.ownerId || '';
+            document.getElementById("active").value = ch.active ? 'true' : 'false';
+        } catch(e){
+            alert("Xatolik: " + e.message);
+        }
+    }
+
+    async function updateChannel(){
+        try {
+            const name = document.getElementById("name").value;
+            const link = document.getElementById("link").value;
+            const telegramChannelId = Number(document.getElementById("telegramChannelId").value);
+            const ownerId = document.getElementById("ownerId").value;
+            const active = document.getElementById("active").value === 'true';
+
+            const dto = { name, telegramChannelId, link, ownerId, active };
+            const res = await fetch(`/api/v1/channels/${id}`, {
+                method:"PUT",
+                headers:{
+                    "Content-Type":"application/json",
+                    "Authorization":`Bearer ${localStorage.getItem("token")}`
+                },
+                body: JSON.stringify(dto)
+            });
+
+            if(res.ok){
+                alert("Yangilandi");
+                window.location.href="/channels/list";
+            } else {
+                const errText = await res.text();
+                alert("Xatolik: " + errText);
+            }
+        } catch(e){
+            alert("Xatolik: " + e.message);
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", loadChannel);
+</script>
+</body>
+</html>

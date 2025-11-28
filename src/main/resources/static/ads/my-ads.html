@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mening e’lonlarim</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1000px;
+            margin: 40px auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .nav-buttons {
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .nav-buttons button {
+            margin-right: 10px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: white;
+        }
+
+        .btn-back {
+            background: #6c757d;
+        }
+
+        .btn-home {
+            background: #343a40;
+        }
+
+        .ads-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .ad-card {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.2s ease;
+        }
+
+        .ad-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .carousel {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            overflow: hidden;
+        }
+
+        .carousel img {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            display: none;
+            transition: opacity 0.4s ease;
+        }
+
+        .carousel img.active {
+            display: block;
+        }
+
+        .carousel-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(0, 0, 0, 0.4);
+            color: #fff;
+            border: none;
+            padding: 8px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 5;
+        }
+
+        .carousel-btn.prev {
+            left: 8px;
+        }
+
+        .carousel-btn.next {
+            right: 8px;
+        }
+
+        .ad-content {
+            padding: 15px;
+        }
+
+        .ad-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #222;
+            margin-bottom: 5px;
+        }
+
+        .ad-price {
+            color: #28a745;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .ad-details {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .ad-status {
+            font-size: 13px;
+            color: #888;
+        }
+
+        .ad-actions {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 5px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+
+        .btn-edit {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #0056b3;
+        }
+
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #b02a37;
+        }
+
+        .btn-send {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-send:hover {
+            background: #117a8b;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Mening e’lonlarim</h1>
+
+    <div class="nav-buttons">
+        <button class="btn-back" onclick="history.back()">Ortga</button>
+        <button class="btn-home" onclick="window.location.href='/'">Asosiy ekran</button>
+    </div>
+
+    <div id="ads-container" class="ads-container"></div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        const container = document.getElementById("ads-container");
+
+        try {
+            const res = await fetch("/api/v1/ads/my-ads", {
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+
+            if (!res.ok) {
+                container.innerHTML = "<p style='color:red;'>E’lonlar yuklanmadi.</p>";
+                return;
+            }
+
+            const ads = await res.json();
+            if (ads.length === 0) {
+                container.innerHTML = "<p>Hali e’lonlar mavjud emas.</p>";
+                return;
+            }
+
+            ads.forEach((ad, index) => {
+                const card = document.createElement("div");
+                card.className = "ad-card";
+
+                let imagesHTML = "";
+                const imgs = ad.imageUrls?.length ? ad.imageUrls : ["/no-image.jpg"];
+                imgs.forEach((url, i) => {
+                    imagesHTML += `<img src="${url.replace('http://', 'https://')}" class="${i === 0 ? 'active' : ''}" alt="image">`;
+                });
+
+                card.innerHTML = `
+                  <div class="carousel" id="carousel-${index}">
+                    ${imagesHTML}
+                    ${imgs.length > 1 ? `
+                      <button class="carousel-btn prev" onclick="prevImage(${index})">&#10094;</button>
+                      <button class="carousel-btn next" onclick="nextImage(${index})">&#10095;</button>
+                    ` : ''}
+                  </div>
+                  <div class="ad-content">
+                    <div class="ad-title">${ad.brand && ad.model ? ad.brand + ' ' + ad.model : ad.description ?? 'E’lon'}</div>
+                    <div class="ad-price">${ad.price ? '$' + ad.price.toFixed(2) : 'N/A'}</div>
+                    <div class="ad-details">${ad.color ?? ''} — ${ad.condition ?? ''}</div>
+                    <div class="ad-details">📍 ${ad.location ?? 'Unknown'}</div>
+                    <div class="ad-status">Status: ${ad.status ?? 'PENDING'}</div>
+                    <div class="ad-details">📞 ${ad.phoneNumber ?? ''}</div>
+                    <div class="ad-actions">
+                      <button class="btn btn-edit" onclick="editAd('${ad.id}')">Edit</button>
+                      <button class="btn btn-delete" onclick="deleteAd('${ad.id}')">Delete</button>
+                      <button class="btn btn-send" onclick="sendToChannels('${ad.id}')">Send to Channels</button>
+                    </div>
+                  </div>
+                `;
+                container.appendChild(card);
+            });
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = "<p style='color:red;'>Xatolik yuz berdi.</p>";
+        }
+    });
+
+    function nextImage(index) {
+        const carousel = document.getElementById(`carousel-${index}`);
+        const imgs = carousel.querySelectorAll("img");
+        let active = Array.from(imgs).findIndex(img => img.classList.contains("active"));
+        imgs[active].classList.remove("active");
+        active = (active + 1) % imgs.length;
+        imgs[active].classList.add("active");
+    }
+
+    function prevImage(index) {
+        const carousel = document.getElementById(`carousel-${index}`);
+        const imgs = carousel.querySelectorAll("img");
+        let active = Array.from(imgs).findIndex(img => img.classList.contains("active"));
+        imgs[active].classList.remove("active");
+        active = (active - 1 + imgs.length) % imgs.length;
+        imgs[active].classList.add("active");
+    }
+
+    async function deleteAd(id) {
+        if (!confirm("Bu e’lonni o‘chirishni xohlaysizmi?")) return;
+        try {
+            const res = await fetch(`/api/v1/ads/${id}`, {
+                method: "DELETE",
+                headers: {"Authorization": `Bearer ${localStorage.getItem("token")}`}
+            });
+            if (res.ok) {
+                alert("O‘chirildi");
+                location.reload();
+            } else alert("O‘chirishda xatolik yuz berdi");
+        } catch (err) {
+            console.error(err);
+            alert("Xatolik");
+        }
+    }
+
+    function editAd(id) {
+        window.location.href = `/ads/update?id=${id}`;
+    }
+
+    /* Chiroyli URL uchun send button */
+    function sendToChannels(adId) {
+        window.location.href = `/channels?adId=${adId}`;
+    }
+</script>
+</body>
+</html>

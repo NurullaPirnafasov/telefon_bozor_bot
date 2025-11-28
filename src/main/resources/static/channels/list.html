@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Kanallar ro‘yxati</title>
+  <style>
+    body { font-family: Arial; background: #f4f4f4; margin:0; padding:0;}
+    .container { width:90%; max-width:900px; margin:40px auto;}
+    h1 { text-align:center; margin-bottom:20px;}
+    .ch-table { width:100%; border-collapse: collapse; background:white;}
+    .ch-table th, .ch-table td { border:1px solid #ccc; padding:8px; text-align:left;}
+    .btn { padding:5px 10px; border:none; border-radius:4px; cursor:pointer;}
+    .btn-edit { background:#007bff; color:white;}
+    .btn-delete { background:#dc3545; color:white;}
+    .btn-toggle { background:#28a745; color:white;}
+    .btn-create { background:#17a2b8; color:white; margin-bottom:10px;}
+    .nav-buttons { margin-bottom: 20px; }
+    .nav-buttons button { width: auto; display: inline-block; margin-right: 10px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Kanallar ro‘yxati</h1>
+
+  <!-- Ortga va Asosiy ekran tugmalari -->
+  <div class="nav-buttons">
+    <button onclick="history.back()" style="background:#6c757d; color:white;">Ortga</button>
+    <button onclick="window.location.href='/'" style="background:#343a40; color:white;">Asosiy ekran</button>
+  </div>
+
+  <button class="btn btn-create" onclick="window.location.href='/channels/create'">Yangi kanal qo‘shish</button>
+  <table class="ch-table" id="channels-table">
+    <thead>
+    <tr>
+      <th>#</th>
+      <th>Nomi</th>
+      <th>Link</th>
+      <th>Faol</th>
+      <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", loadChannels);
+
+  async function loadChannels() {
+    const tbody = document.querySelector("#channels-table tbody");
+    tbody.innerHTML = "";
+    try {
+      const res = await fetch("/api/v1/channels", {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+      });
+      const channels = await res.json();
+      channels.forEach((ch,i)=>{
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td>${ch.name}</td>
+          <td>${ch.link || ''}</td>
+          <td>${ch.active}</td>
+          <td>
+            <button class="btn btn-edit" onclick="window.location.href='/channels/update?id=${ch.id}'">Edit</button>
+            <button class="btn btn-delete" onclick="deleteChannel('${ch.id}')">Delete</button>
+            <button class="btn btn-toggle" onclick="toggleChannel('${ch.id}')">Toggle</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } catch(e){ console.error(e); alert("Xatolik!"); }
+  }
+
+  async function deleteChannel(id){
+    if(!confirm("O‘chirilsinmi?")) return;
+    await fetch(`/api/v1/channels/${id}`, {
+      method:"DELETE",
+      headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+    });
+    loadChannels();
+  }
+
+  async function toggleChannel(id){
+    await fetch(`/api/v1/channels/${id}/toggle`, {
+      method:"POST",
+      headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+    });
+    loadChannels();
+  }
+</script>
+</body>
+</html>

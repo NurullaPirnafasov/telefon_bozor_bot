@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telefon Bozor</title>
+    <script src="https://telegram.org/js/telegram-web-app.js?59"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            margin: 0;
+            background: #f5f5f5;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .brand {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .top-buttons button {
+            margin-left: 10px;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .search-btn {
+            background: #ffc107;
+        }
+
+        .create-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        .myads-btn {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .channels-btn {
+            background: #6c757d;
+            color: white;
+            display: none;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .container {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        .carousel {
+            position: relative;
+            width: 100%;
+            height: 250px;
+            overflow: hidden;
+        }
+
+        .carousel img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .prev, .next {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+        .prev {
+            left: 10px;
+        }
+
+        .next {
+            right: 10px;
+        }
+
+        .card-content {
+            padding: 10px;
+        }
+
+        .card-content p {
+            margin: 3px 0;
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <div class="brand">Telefon Bozor</div>
+    <div class="top-buttons">
+        <button class="search-btn">Qidirish</button>
+        <button class="myads-btn" onclick="window.location.href='/ads/my-ads'">Mening e’lonlarim</button>
+        <button class="create-btn" onclick="window.location.href='/ads/create'">E'lon berish</button>
+        <button class="channels-btn" onclick="window.location.href='/channels/list'">Kanallar</button>
+        <button id="logoutBtn" style="display:none;" onclick="logout()">Chiqish</button>
+    </div>
+</header>
+
+
+<!-- TELEGRAM LOGIN WIDGET -->
+<div id="tg-widget" style="text-align:center; margin:20px 0;">
+    <script async src="https://telegram.org/js/telegram-widget.js?22"
+            data-telegram-login="telefon_bozor_official_bot"
+            data-size="large"
+            data-userpic="true"
+            data-request-access="write"
+            data-onauth="onTelegramAuth(user)">
+    </script>
+</div>
+
+<div class="container" id="adsContainer"></div>
+<script>
+    const tg = window.Telegram.WebApp;
+
+    function logout() {
+        localStorage.removeItem("token"); // tokenni o'chirish
+        document.getElementById("logoutBtn").style.display = "none"; // logout tugmasini yashirish
+        document.getElementById("tg-widget").style.display = "block"; // widgetni ko'rsatish
+        hideButtonsByRole(null); // role-based buttonlarni qayta tekshirish
+        alert("Siz tizimdan chiqdingiz");
+    }
+
+    document.querySelector(".search-btn").addEventListener("click", async () => {
+        // Foydalanuvchi xohlagan parametrni yozadi (brand, model, color, location yoki price)
+        const query = prompt("Qidiruv: brand, model, color, location yoki price kiriting");
+
+        if (!query) return; // agar foydalanuvchi hech narsa yozmasa, chiqish
+
+        // URLSearchParams orqali query string yaratamiz
+        const params = new URLSearchParams();
+        // Backend’da barcha fieldlarda LIKE query ishlatilgani uchun bitta param bilan ham ishlaydi
+        params.append("q", query);
+
+        const res = await fetch(`/api/v1/ads/search?${params.toString()}`, {
+            headers: {"Authorization": `Bearer ${localStorage.getItem("token")}`}
+        });
+
+        if (!res.ok) {
+            alert("Qidiruvda xatolik yuz berdi");
+            return;
+        }
+
+        const data = await res.json();
+        const container = document.getElementById("adsContainer");
+        container.innerHTML = "";
+
+        if (!data.length) {
+            container.innerHTML = `<p style="text-align:center;color:#777;">Hech narsa topilmadi.</p>`;
+            return;
+        }
+
+        data.forEach((ad, i) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.appendChild(createCarousel(ad.imageUrls || [], i));
+
+            const content = document.createElement('div');
+            content.className = 'card-content';
+            content.innerHTML = `
+            <h3>${ad.brand ?? ''} ${ad.model ?? ''} — ${ad.price ? '$' + ad.price : 'N/A'}</h3>
+            <p><strong>Color:</strong> ${ad.color ?? 'N/A'} |
+               <strong>Condition:</strong> ${ad.condition ?? 'N/A'}</p>
+            <p><strong>Location:</strong> ${ad.location ?? 'N/A'} |
+               <strong>Phone:</strong> ${ad.phoneNumber ?? 'N/A'}</p>
+            <p>${ad.description ?? ''}</p>
+        `;
+            card.appendChild(content);
+            container.appendChild(card);
+        });
+    });
+
+    function onTelegramAuth(user) {
+        fetch("https://synchronous-cora-unbet.ngrok-free.dev/api/v1/auth/telegram/widget", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(user)
+        })
+            .then(res => res.json())
+            .then(data => {
+                localStorage.setItem("token", data.token);
+                document.getElementById("tg-widget").style.display = "none"; // widgetni yashirish
+                document.getElementById("logoutBtn").style.display = "inline-block"; // logout tugmasini ko'rsatish
+                hideButtonsByRole(data.token);
+                alert("Login successful!");
+            })
+            .catch(() => alert("Login failed"));
+    }
+
+    async function telegramLogin() {
+        tg?.ready();
+        const initData = tg?.initData;
+        if (!initData) {
+            const token=localStorage.getItem("token");
+            if (token) {
+                document.getElementById("logoutBtn").style.display = "inline-block"; // logout tugmasini ko'rsatish
+            }else {
+                document.getElementById("tg-widget").style.display = "block"; // widgetni ko'rsatish
+            }
+            hideButtonsByRole(token);
+            return;
+        }
+
+        try {
+            const res = await fetch("/api/v1/auth/telegram", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({initData})
+            });
+            const data = await res.json();
+            hideButtonsByRole(data.token);
+            if (data.token) {
+                localStorage.setItem("token", data.token);
+                document.getElementById("tg-widget").style.display = "none"; // widgetni yashirish
+            } else {
+                document.getElementById("tg-widget").style.display = "block"; // widgetni ko'rsatish
+            }
+        } catch (e) {
+        }
+    }
+
+    function hideButtonsByRole(token) {
+        const btn = document.querySelector(".channels-btn");
+        if (!token) return btn.style.display = "none";
+
+        try {
+            const role = JSON.parse(atob(token.split(".")[1])).role;
+            if (role === "ADMIN") {
+                btn.style.display = "inline-block";
+            }else {
+                btn.style.display = "none";
+
+            }
+        } catch {
+            btn.style.display = "none";
+        }
+    }
+
+    function createCarousel(images, index) {
+        const carousel = document.createElement('div');
+        carousel.className = 'carousel';
+        carousel.id = 'carousel-' + index;
+        images = images?.length ? images : ['/no-image.jpg'];
+
+        images.forEach(src => {
+            const img = document.createElement('img');
+            img.src = src.replace('http://', 'https://');
+            carousel.appendChild(img);
+        });
+
+        if (images.length > 1) {
+            const prev = document.createElement('button');
+            prev.className = 'prev';
+            prev.innerHTML = '&#10094;';
+            prev.onclick = () => prevImage(index);
+            const next = document.createElement('button');
+            next.className = 'next';
+            next.innerHTML = '&#10095;';
+            next.onclick = () => nextImage(index);
+            carousel.append(prev, next);
+        }
+        return carousel;
+    }
+
+    function nextImage(i) {
+        const c = document.getElementById(`carousel-${i}`);
+        c.appendChild(c.querySelector("img"));
+    }
+
+    function prevImage(i) {
+        const c = document.getElementById(`carousel-${i}`);
+        const imgs = c.querySelectorAll("img");
+        c.insertBefore(imgs[imgs.length - 1], imgs[0]);
+    }
+
+    async function loadAds(url = '/api/v1/ads') {
+        const res = await fetch(url);
+        const data = await res.json();
+        const c = document.getElementById('adsContainer');
+        c.innerHTML = '';
+
+        if (!data.length) return c.innerHTML =
+            `<p style="text-align:center;color:#777;">Hali e’lonlar mavjud emas.</p>`;
+
+        data.forEach((ad, i) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.appendChild(createCarousel(ad.imageUrls || [], i));
+
+            const content = document.createElement('div');
+            content.className = 'card-content';
+            content.innerHTML = `
+                <h3>${ad.brand ?? ''} ${ad.model ?? ''} — ${ad.price ? '$' + ad.price : 'N/A'}</h3>
+                <p><strong>Color:</strong> ${ad.color ?? 'N/A'} |
+                   <strong>Condition:</strong> ${ad.condition ?? 'N/A'}</p>
+                <p><strong>Location:</strong> ${ad.location ?? 'N/A'} |
+                   <strong>Phone:</strong> ${ad.phoneNumber ?? 'N/A'}</p>
+                <p>${ad.description ?? ''}</p>
+            `;
+            card.appendChild(content);
+            c.appendChild(card);
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        document.querySelector(".channels-btn").style.display = "none"; // channel btn yashirish
+        document.getElementById("tg-widget").style.display = "none"; // widgetni yashirish
+        await telegramLogin();
+        await loadAds(); // BU JOYDA HAR DOIM CHAQILISHI SHART
+    });
+</script>
+
+</body>
+</html>

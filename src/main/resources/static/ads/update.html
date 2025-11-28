@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Update Advertisement</title>
+  <style>
+    body { font-family: Arial; margin: 50px; background: #f3f3f3; }
+    form { background: white; padding: 20px; border-radius: 8px; width: 320px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    input, textarea, select, button { width: 100%; margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+    button { background: #28a745; color: white; cursor: pointer; }
+    button:hover { background: #1e7e34; }
+    .msg { margin-top: 15px; font-weight: bold; }
+    .nav-buttons { margin-bottom: 20px; }
+    .nav-buttons button { width: auto; display: inline-block; margin-right: 10px; }
+  </style>
+</head>
+<body>
+<h1>Update Advertisement</h1>
+
+<div class="nav-buttons">
+  <button onclick="history.back()" style="background:#6c757d; color:white;">Ortga</button>
+  <button onclick="window.location.href='/'" style="background:#343a40; color:white;">Asosiy ekran</button>
+</div>
+
+<form id="updateForm">
+  <textarea id="description" placeholder="Description" required></textarea>
+  <input type="number" id="price" placeholder="Price" required>
+  <input type="text" id="brand" placeholder="Brand">
+  <input type="text" id="model" placeholder="Model">
+  <input type="text" id="color" placeholder="Color">
+  <input type="text" id="phoneNumber" placeholder="Phone Number">
+  <input type="text" id="phoneMemory" placeholder="Phone Memory">
+  <select id="condition" required>
+    <option value="">Select Condition</option>
+    <option value="NEW">New</option>
+    <option value="USED">Used</option>
+  </select>
+  <input type="text" id="location" placeholder="Location">
+  <input type="file" id="files" multiple accept="image/*">
+  <button type="submit">Update</button>
+</form>
+
+<p class="msg" id="message"></p>
+
+<script>
+  function getAuthHeaders(contentType = "application/json") {
+    const token = localStorage.getItem("token");
+    return token ? { "Authorization": "Bearer " + token, "Content-Type": contentType } : { "Content-Type": contentType };
+  }
+
+  const id = new URLSearchParams(window.location.search).get('id');
+
+  async function loadAd() {
+    const res = await fetch(`/api/v1/ads/${id}`, { headers: getAuthHeaders() });
+    if (res.ok) {
+      const ad = await res.json();
+      document.getElementById('brand').value = ad.brand;
+      document.getElementById('model').value = ad.model;
+      document.getElementById('condition').value = ad.condition;
+      document.getElementById('phoneMemory').value = ad.phoneMemory;
+      document.getElementById('color').value = ad.color;
+      document.getElementById('price').value = ad.price;
+      document.getElementById('description').value = ad.description;
+      document.getElementById('phoneNumber').value = ad.phoneNumber;
+      document.getElementById('location').value = ad.location;
+    }
+  }
+
+  document.getElementById('updateForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('message');
+
+    try {
+      const dto = {
+        description: document.getElementById('description').value,
+        price: parseFloat(document.getElementById('price').value),
+        brand: document.getElementById('brand').value,
+        model: document.getElementById('model').value,
+        color: document.getElementById('color').value,
+        phoneNumber: document.getElementById('phoneNumber').value,
+        phoneMemory: document.getElementById('phoneMemory').value,
+        condition: document.getElementById('condition').value,
+        location: document.getElementById('location').value
+      };
+
+      const res = await fetch(`/api/v1/ads/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(dto)
+      });
+
+      if (!res.ok) throw new Error("Advertisement update failed");
+
+      // Upload images if selected
+      const files = document.getElementById('files').files;
+      if (files.length > 0) {
+        const formData = new FormData();
+        formData.append("adId", id);
+        for (let i = 0; i < files.length; i++) formData.append("files", files[i]);
+
+        const resImg = await fetch("/api/v1/images/upload", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + localStorage.getItem("token") },
+          body: formData
+        });
+
+        if (!resImg.ok) throw new Error("Image upload failed");
+      }
+
+      msg.style.color = "green";
+      msg.textContent = "Advertisement updated successfully!";
+      setTimeout(() => window.location.href = '/ads/list', 1200);
+
+    } catch (err) {
+      msg.style.color = "red";
+      msg.textContent = err.message;
+    }
+  });
+
+  loadAd();
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+jwt:
+  token: U2VjdXJlSldUU2VjcmV0S2V5Rm9yMjAyNUV4YW1wbGUhIQ==
+  expiry: 86400000   # 1 kun millis
+
+spring:
+  datasource:
+    username: postgres
+    password: math2606
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/telefon_bozor
+
+  jpa:
+    hibernate:
+      ddl-auto: none # default none
+    show-sql: true
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+bot:
+  token: 7822260166:AAFcUjs6fJwvrBK8IYknd3zc9Py9-P7glxk
+
+cloudinary:
+  cloud_name: dqf5zwed9
+  api_key: 686632177594765
+  api_secret: 6YSfWr9P76U4Adk-ReuevHHlAhY

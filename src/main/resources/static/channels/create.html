@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Kanal yaratish</title>
+  <style>
+    body{font-family:Arial;background:#f4f4f4;margin:0;padding:0;}
+    .container{width:90%;max-width:500px;margin:40px auto;background:white;padding:20px;border-radius:6px;}
+    input,button{width:100%;padding:8px;margin:5px 0;border-radius:4px;border:1px solid #ccc;}
+    button{background:#28a745;color:white;border:none;cursor:pointer;}
+    .nav-buttons { margin-bottom: 15px; }
+    .nav-buttons button { width: auto; display: inline-block; margin-right: 10px; }
+    .btn-back { background:#6c757d; color:white; }
+    .btn-home { background:#343a40; color:white; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Kanal yaratish</h1>
+
+  <div class="nav-buttons">
+    <button class="btn-back" onclick="history.back()">Ortga</button>
+    <button class="btn-home" onclick="window.location.href='/'">Asosiy ekran</button>
+  </div>
+
+  <input type="text" id="name" placeholder="Kanal nomi">
+  <input type="number" id="telegramChannelId" placeholder="Telegram channel ID (raqam)">
+  <input type="text" id="link" placeholder="Telegram link">
+  <input type="text" id="ownerId" placeholder="Owner ID">
+
+  <button onclick="createChannel()">Saqlash</button>
+</div>
+
+<script>
+  async function createChannel(){
+    const dto = {
+      name: document.getElementById("name").value,
+      telegramChannelId: Number(document.getElementById("telegramChannelId").value),
+      link: document.getElementById("link").value,
+      ownerId: document.getElementById("ownerId").value
+    };
+
+    const token = localStorage.getItem("token");
+    const res = await fetch("/api/v1/channels", {
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization": token ? `Bearer ${token}` : ""
+      },
+      body: JSON.stringify(dto)
+    });
+
+    if(res.ok){
+      alert("Kanal yaratildi");
+      window.location.href="/channels/list";
+    } else {
+      const errText = await res.text();
+      alert("Xatolik yuz berdi: " + errText);
+    }
+  }
+</script>
+</body>
+</html>
